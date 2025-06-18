@@ -1,90 +1,79 @@
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("SN PRIVATE V5", "Ocean")
+local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Kavo-UI-Library/main/source.lua"))()
+local UI = Lib.CreateLib("SN PRIVATE V5", "Ocean")
 
-local player = game.Players.LocalPlayer
+local plr = game.Players.LocalPlayer
 local rs = game:GetService("ReplicatedStorage")
 local remote = rs:WaitForChild("RemoteEvent")
-local whitelist = {}
-local selectedTarget = nil
-local currentPlayers = {}
+local wl, selected, plrList = {}, nil, {}
 
 local vu = game:GetService("VirtualUser")
-player.Idled:Connect(function()
-   vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+plr.Idled:Connect(function()
+   vu:Button2Down(Vector2.new(), workspace.CurrentCamera.CFrame)
    task.wait(1)
-   vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+   vu:Button2Up(Vector2.new(), workspace.CurrentCamera.CFrame)
 end)
 
-local function killPlayer(target)
-    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
-        remote:FireServer("AttackPlayer", target)
+local function kill(t)
+    if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+        plr.Character.HumanoidRootPart.CFrame = t.Character.HumanoidRootPart.CFrame
+        remote:FireServer("AttackPlayer", t)
     end
 end
 
-local function isWhitelisted(target)
-    return whitelist[target.Name] == true
+local function isWL(t)
+    return wl[t.Name] == true
 end
 
-local MainTab = Window:NewTab("Combat")
-local MainSection = MainTab:NewSection(" Combate")
+local main = UI:NewTab("Combat"):NewSection("Combate")
 
-MainSection:NewToggle("Kill All", "Ataca todos (exceto whitelist)", function(state)
+main:NewToggle("Kill All", "Ataca todos (exceto whitelist)", function(state)
     _G.KillAll = state
     while _G.KillAll do
-        for _, target in pairs(game.Players:GetPlayers()) do
-            if target ~= player and target.Character and not isWhitelisted(target) then
-                killPlayer(target)
+        for _, t in pairs(game.Players:GetPlayers()) do
+            if t ~= plr and t.Character and not isWL(t) then
+                kill(t)
             end
         end
         task.wait(1)
     end
 end)
 
-local dropdown
-local function updatePlayerList()
-    local newList = {}
+local dd
+local function refreshList()
+    local new = {}
     for _, p in pairs(game.Players:GetPlayers()) do
-        if p ~= player then
-            table.insert(newList, p.Name)
+        if p ~= plr then
+            table.insert(new, p.Name)
         end
     end
-    currentPlayers = newList
-    if dropdown then
-        dropdown:Refresh(newList)
-    end
+    plrList = new
+    if dd then dd:Refresh(new) end
 end
 
-dropdown = MainSection:NewDropdown("Selecionar jogador", "Escolha um jogador", currentPlayers, function(name)
-    selectedTarget = game.Players:FindFirstChild(name)
+dd = main:NewDropdown("Selecionar jogador", "Escolha um jogador", plrList, function(name)
+    selected = game.Players:FindFirstChild(name)
 end)
 
-task.spawn(function(
+task.spawn(function()
     while true do
-        updatePlayerList()
+        refreshList()
         task.wait(5)
     end
 end)
 
-MainSection:NewButton("Kill Target", "Mata jogador selecionado", function()
-    if selectedTarget then
-        killPlayer(selectedTarget)
-    end
+main:NewButton("Kill Target", "Mata jogador selecionado", function()
+    if selected then kill(selected) end
 end)
 
-MainSection:NewButton("Whitelist Target", "Protege jogador", function()
-    if selectedTarget then
-        whitelist[selectedTarget.Name] = true
-    end
+main:NewButton("Whitelist Target", "Protege jogador", function()
+    if selected then wl[selected.Name] = true end
 end)
 
-MainSection:NewButton("Unwhitelist Target", "Remove proteção", function()
-    if selectedTarget then
-        whitelist[selectedTarget.Name] = nil
-    end
+main:NewButton("Unwhitelist Target", "Remove proteção", function()
+    if selected then wl[selected.Name] = nil end
 end)
 
-MainSection:NewToggle("Auto Punch (sem animação)", "Soco automático", function(state)
+main:NewToggle("Auto Punch (sem animação)", "Soco automático", function(state)
     _G.AutoPunch = state
     while _G.AutoPunch do
         remote:FireServer("GainStrength")
@@ -92,21 +81,19 @@ MainSection:NewToggle("Auto Punch (sem animação)", "Soco automático", functio
     end
 end)
 
-MainSection:NewToggle("Auto Equip Punch", "Equipa ferramenta automaticamente", function(state)
+main:NewToggle("Auto Equip Punch", "Equipa ferramenta automaticamente", function(state)
     _G.AutoEquip = state
     while _G.AutoEquip do
-        local tool = player.Backpack:FindFirstChild("Punch") or player.Backpack:FindFirstChildWhichIsA("Tool")
+        local tool = plr.Backpack:FindFirstChild("Punch") or plr.Backpack:FindFirstChildWhichIsA("Tool")
         if tool then
-            player.Character.Humanoid:EquipTool(tool)
+            plr.Character.Humanoid:EquipTool(tool)
         end
         task.wait(1)
     end
 end)
 
-local TeleportTab = Window:NewTab("Teleports")
-local TeleportSection = TeleportTab:NewSection("Ilhas")
-
-local islands = {
+local tp = UI:NewTab("Teleports"):NewSection("Ilhas")
+local locs = {
     ["Tiny Island"] = Vector3.new(-1019, 22, -1593),
     ["Frost Island"] = Vector3.new(-1096, 13, -1956),
     ["Mythical Island"] = Vector3.new(-1100, 13, -2325),
@@ -115,8 +102,8 @@ local islands = {
     ["Jungle Island"] = Vector3.new(-1200, 13, -3300)
 }
 
-for name, pos in pairs(islands) do
-    TeleportSection:NewButton(name, "Teleporta para " .. name, function()
-        player.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
+for name, pos in pairs(locs) do
+    tp:NewButton(name, "Teleporta para " .. name, function()
+        plr.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
     end)
 end
