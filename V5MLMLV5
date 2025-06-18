@@ -1,11 +1,13 @@
-local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Kavo-UI-Library/main/source.lua"))()
-local UI = Lib.CreateLib("SN PRIVATE V5", "Ocean")
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/memejames/elerium-v2-ui-library/main/Library", true))()
+
+local Window = Elerium:CreateWindow("SN PRIVATE V5")
 
 local plr = game.Players.LocalPlayer
 local rs = game:GetService("ReplicatedStorage")
 local remote = rs:WaitForChild("RemoteEvent")
 local wl, selected, plrList = {}, nil, {}
 
+-- Anti-AFK
 local vu = game:GetService("VirtualUser")
 plr.Idled:Connect(function()
    vu:Button2Down(Vector2.new(), workspace.CurrentCamera.CFrame)
@@ -13,6 +15,7 @@ plr.Idled:Connect(function()
    vu:Button2Up(Vector2.new(), workspace.CurrentCamera.CFrame)
 end)
 
+-- Funções principais
 local function kill(t)
     if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
         plr.Character.HumanoidRootPart.CFrame = t.Character.HumanoidRootPart.CFrame
@@ -24,9 +27,9 @@ local function isWL(t)
     return wl[t.Name] == true
 end
 
-local main = UI:NewTab("Combat"):NewSection("Combate")
-
-main:NewToggle("Kill All", "Ataca todos (exceto whitelist)", function(state)
+-- COMBATE
+local TabCombat = Window:CreateTab("Combat")
+TabCombat:CreateToggle("Kill All", function(state)
     _G.KillAll = state
     while _G.KillAll do
         for _, t in pairs(game.Players:GetPlayers()) do
@@ -38,21 +41,24 @@ main:NewToggle("Kill All", "Ataca todos (exceto whitelist)", function(state)
     end
 end)
 
-local dd
+-- Dropdown dinâmico de jogadores
+local playerDropdown = TabCombat:CreateDropdown("Selecionar jogador", function(name)
+    selected = game.Players:FindFirstChild(name)
+end, {})
+
 local function refreshList()
-    local new = {}
+    local names = {}
     for _, p in pairs(game.Players:GetPlayers()) do
         if p ~= plr then
-            table.insert(new, p.Name)
+            table.insert(names, p.Name)
         end
     end
-    plrList = new
-    if dd then dd:Refresh(new) end
+    plrList = names
+    playerDropdown:Clear()
+    for _, name in pairs(plrList) do
+        playerDropdown:Add(name)
+    end
 end
-
-dd = main:NewDropdown("Selecionar jogador", "Escolha um jogador", plrList, function(name)
-    selected = game.Players:FindFirstChild(name)
-end)
 
 task.spawn(function()
     while true do
@@ -61,19 +67,19 @@ task.spawn(function()
     end
 end)
 
-main:NewButton("Kill Target", "Mata jogador selecionado", function()
+TabCombat:CreateButton("Kill Target", function()
     if selected then kill(selected) end
 end)
 
-main:NewButton("Whitelist Target", "Protege jogador", function()
+TabCombat:CreateButton("Whitelist Target", function()
     if selected then wl[selected.Name] = true end
 end)
 
-main:NewButton("Unwhitelist Target", "Remove proteção", function()
+TabCombat:CreateButton("Unwhitelist Target", function()
     if selected then wl[selected.Name] = nil end
 end)
 
-main:NewToggle("Auto Punch (sem animação)", "Soco automático", function(state)
+TabCombat:CreateToggle("Auto Punch (sem animação)", function(state)
     _G.AutoPunch = state
     while _G.AutoPunch do
         remote:FireServer("GainStrength")
@@ -81,7 +87,7 @@ main:NewToggle("Auto Punch (sem animação)", "Soco automático", function(state
     end
 end)
 
-main:NewToggle("Auto Equip Punch", "Equipa ferramenta automaticamente", function(state)
+TabCombat:CreateToggle("Auto Equip Punch", function(state)
     _G.AutoEquip = state
     while _G.AutoEquip do
         local tool = plr.Backpack:FindFirstChild("Punch") or plr.Backpack:FindFirstChildWhichIsA("Tool")
@@ -92,7 +98,8 @@ main:NewToggle("Auto Equip Punch", "Equipa ferramenta automaticamente", function
     end
 end)
 
-local tp = UI:NewTab("Teleports"):NewSection("Ilhas")
+-- TELEPORTES
+local TabTeleport = Window:CreateTab("Teleports")
 local locs = {
     ["Tiny Island"] = Vector3.new(-1019, 22, -1593),
     ["Frost Island"] = Vector3.new(-1096, 13, -1956),
@@ -103,7 +110,7 @@ local locs = {
 }
 
 for name, pos in pairs(locs) do
-    tp:NewButton(name, "Teleporta para " .. name, function()
+    TabTeleport:CreateButton(name, function()
         plr.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
     end)
 end
